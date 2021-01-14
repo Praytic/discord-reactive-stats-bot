@@ -1,27 +1,35 @@
 package org.praytic.discord.statsbot;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.Entity;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.praytic.discord.statsbot.client.DatastoreClient;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
 
 @RequiredArgsConstructor
 @RestController
+@RequestMapping("/datastore")
 class DatastoreController {
 
-    private final Datastore datastore;
+    private final DatastoreClient datastoreClient;
 
     @GetMapping
-    public String indexPage() {
-        return "";
+    public Entity getObject(@RequestParam("kind") String kind,
+                            @RequestParam("key") String key) {
+        return datastoreClient.getEntity(kind, key);
     }
 
-    @PostMapping
-    public Entity getObject(@RequestParam("type") String type,
-                            @RequestParam("key") String key) {
-        return datastore.get(datastore.newKeyFactory().setKind(type).newKey(key));
+    @DeleteMapping
+    public void deleteGuildEntity(@RequestParam("kind") String kind,
+                                  @RequestParam(value = "guild", required = false) String guild,
+                                  @RequestParam(value = "channel", required = false) String channel) {
+        datastoreClient.clearEntity(kind, guild, channel);
+    }
+
+    @GetMapping("/oldest-timestamp")
+    public Timestamp getOldestTimestamp(@RequestParam("kind") String kind) {
+        return datastoreClient.getOldestTimestamp(kind);
     }
 }

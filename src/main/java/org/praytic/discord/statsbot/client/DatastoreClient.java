@@ -7,10 +7,13 @@ import com.mewna.catnip.entity.message.ReactionUpdate;
 import com.mewna.catnip.entity.user.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.praytic.discord.statsbot.model.ChannelStats;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
+import java.util.*;
+
+import static java.util.stream.Collectors.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -115,9 +118,24 @@ public class DatastoreClient {
                 .set("timestamp", Timestamp.parseTimestamp(msg.timestamp().toString()));
         if (msg.guildId() != null) {
             msgEntityBuilder.set("guild", msg.guildId());
-        } else if (guildId != null){
+        } else if (guildId != null) {
             msgEntityBuilder.set("guild", guildId);
         }
         datastore.put(msgEntityBuilder.build());
+    }
+
+    public List<Entity> getChannelMessages(String channel) {
+        Query<Entity> query = Query.newGqlQueryBuilder(
+                Query.ResultType.ENTITY,
+                "SELECT * FROM `message` WHERE channel=@channel")
+                .setBinding("channel", channel)
+                .build();
+        QueryResults<Entity> queryResults = datastore.run(query);
+        List<Entity> entities = new ArrayList<>();
+        while (queryResults.hasNext()) {
+            Entity entity = queryResults.next();
+            entities.add(entity);
+        }
+        return entities;
     }
 }

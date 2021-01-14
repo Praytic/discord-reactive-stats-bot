@@ -7,13 +7,12 @@ import com.mewna.catnip.entity.message.ReactionUpdate;
 import com.mewna.catnip.entity.user.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.praytic.discord.statsbot.model.ChannelStats;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
-import java.util.*;
-
-import static java.util.stream.Collectors.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @RequiredArgsConstructor

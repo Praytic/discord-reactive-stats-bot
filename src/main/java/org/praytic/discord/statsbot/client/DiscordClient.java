@@ -40,13 +40,14 @@ public class DiscordClient {
     }
 
     public void initialLoad(String guild) {
-        catnip.rest().guild().getGuild(guild)
-                .subscribe(guild1 -> log.info("Updating guild {}:{}", guild1.name(), guild1.id()));
         catnip.rest().guild().getGuildChannels(guild)
                 .filter(Channel::isText)
+                .doOnError(error -> log.error("Error occurred during initial load.", error))
                 .subscribe(channel -> {
                     try {
-                        log.info("Updating channel {}:{}", channel.name(), channel.id());
+                        log.info("Updating channel {}:{} in guild {}:{}",
+                                channel.name(), channel.id(),
+                                channel.guild().name(), channel.guildId());
                         TextChannel textChannel = channel.asTextChannel();
                         final AtomicInteger counter = new AtomicInteger(0);
 
@@ -93,9 +94,17 @@ public class DiscordClient {
                         summarizingInt(entity -> 1)))
                 .entrySet()
                 .stream()
-                .map(entry -> new UserStats(
-                        catnip.rest().user().getUser(entry.getKey()).blockingGet().username(),
-                        entry.getValue().getSum()))
+                .map(entry -> {
+                    try {
+                        return new UserStats(
+                                catnip.rest().user().getUser(entry.getKey()).blockingGet().username(),
+                                entry.getValue().getSum());
+                    } catch (ResponseException e) {
+                        return new UserStats(
+                                entry.getKey(),
+                                entry.getValue().getSum());
+                    }
+                })
                 .sorted(Comparator.comparing(UserStats::getMessagesCount).reversed())
                 .limit(10)
                 .collect(toList());
@@ -110,6 +119,7 @@ public class DiscordClient {
 
     private void addPerMessageLoad(Catnip catnip) {
         catnip.observable(DiscordEvent.MESSAGE_CREATE)
+                .doOnError(error -> log.error("Error occurred when message was created.", error))
                 .subscribe(msg -> {
                     log.info("New message {} from {}", msg.id(), msg.author());
                     datastoreClient.uploadEntity(msg, msg.guildId());
@@ -119,6 +129,7 @@ public class DiscordClient {
 
     private void addPerReactionLoad(Catnip catnip) {
         catnip.observable(DiscordEvent.MESSAGE_REACTION_ADD)
+                .doOnError(error -> log.error("Error occurred when reaction was added.", error))
                 .subscribe(reaction -> {
                     log.info("New reaction {} from {}", reaction.emoji().id(), reaction.user());
                     datastoreClient.uploadEntity(reaction, reaction.messageId());
@@ -128,6 +139,7 @@ public class DiscordClient {
     private void addCommandHandler(Catnip catnip) {
         catnip.observable(DiscordEvent.MESSAGE_CREATE)
                 .filter(msg -> msg.content().startsWith("!channelstats"))
+                .doOnError(error -> log.error("Error occurred during message command.", error))
                 .subscribe(msg -> {
                     List<String> channelMentions = new ArrayList<>();
                     Matcher matcher = Pattern.compile("<#!?(\\d+)>").matcher(msg.content());

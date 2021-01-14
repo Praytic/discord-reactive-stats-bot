@@ -10,6 +10,8 @@ import org.praytic.discord.statsbot.config.properties.GoogleProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.util.ResourceUtils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -25,14 +27,15 @@ public class DatastoreConfig {
 
     @Bean
     public Datastore datastore() throws IOException {
-        InputStream googleCreds = ClassLoader.getSystemResourceAsStream(googleProperties.getApplicationCredentials());
-        if (googleCreds == null) {
-            throw new RuntimeException("Google application credentials file does not exist or the path is incorrect.");
+        if (googleProperties.getApplicationCredentials() == null) {
+            return DatastoreOptions.getDefaultInstance().getService();
+        } else {
+            return DatastoreOptions.newBuilder()
+                    .setProjectId(googleProperties.getProjectId())
+                    .setCredentials(ServiceAccountCredentials.fromStream(
+                            new FileInputStream(googleProperties.getApplicationCredentials())))
+                    .build()
+                    .getService();
         }
-        return DatastoreOptions.newBuilder()
-                .setProjectId(googleProperties.getProjectId())
-                .setCredentials(ServiceAccountCredentials.fromStream(googleCreds))
-                .build()
-                .getService();
     }
 }
